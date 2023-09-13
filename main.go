@@ -54,7 +54,7 @@ func parseArgs() *Options {
 	flags.StringVarP(&options.Proxy, "proxy", "p", "", "http proxy to use")
 	flags.StringVarP(&options.Output, "output", "o", "", "Output filename")
 	flags.DurationVarP(&options.Timeout, "timeout", "t", time.Second*10, "Delay between each request")
-	flags.IntVarP(&options.Threads, "threads", "tn", 1, "Number of threads for requests")
+	flags.IntVarP(&options.Threads, "threads", "tn", 1, "Number of concurrent targets")
 
 	if err := flags.Parse(); err != nil {
 		gologger.Fatal().Msg(err.Error())
@@ -105,18 +105,23 @@ func main() {
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	wg.Add(options.Threads)
+	var numOfGoroutines int
+	if options.Threads > len(targetList) {
+		numOfGoroutines = len(targetList)
+	} else {
+		numOfGoroutines = options.Threads
+	}
+	wg.Add(numOfGoroutines)
 
 	urlsPerThread := len(targetList) / options.Threads
 	remainingURLs := len(targetList) % options.Threads
 
 	output := []map[string]interface{}{}
-	gologger.Print().Msgf("Program started: [%s]", currentTime())
-	for thread := 0; thread < options.Threads; thread++ {
+	for thread := 0; thread < numOfGoroutines; thread++ {
 		start := thread * urlsPerThread
 		end := start + urlsPerThread
 
-		if thread == options.Threads-1 {
+		if thread == numOfGoroutines-1 {
 			end += remainingURLs
 		}
 
@@ -148,6 +153,7 @@ func main() {
 		}(targetList[start:end])
 
 	}
+	wg.Wait()
 
 	// save output as json
 	if options.Output != "" {
@@ -156,11 +162,9 @@ func main() {
 		}
 	}
 
-	wg.Wait()
 }
 
 func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck bool, headers map[string]string) map[string]interface{} {
-	fmt.Println("testing: " + target)
 	origins := []string{
 		fmt.Sprintf("%s://NonExistenceSubdomainToTest.%s", scheme, domain),
 		fmt.Sprintf("%s://%s.%s", scheme, domain, attackerDomain),
@@ -196,13 +200,13 @@ func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck boo
 	}
 
 	if !subdomainCheck && options.TestMisconfig {
-		gologger.Print().Msgf("Testing origin misconfiguration. [%s]", currentTime())
+		gologger.Print().Msgf("Testing origin misconfiguration for %s [%s]", target, currentTime())
 
 		for _, origin := range origins {
 			headers["Origin"] = origin
 			attackRequest, err := http.NewRequest("GET", target, nil)
 			if err != nil {
-				gologger.Warning().Msgf("Failed to create request.\n\t%s", err.Error())
+				gologger.Warning().Msgf("Failed to create request with origin==%s.\n\t%s", origin, err.Error())
 				continue
 			}
 			for key, value := range headers {
@@ -226,12 +230,11 @@ func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck boo
 						"Access-Control-Allow-Credentials": responseHeaders["Access-Control-Allow-Credentials"][0],
 						"type":                             "potential misconfig",
 					}
-					fmt.Println("**********************************")
 					jsonData, err := json.MarshalIndent(tmpOutput, "", "  ")
 					if err != nil {
 						gologger.Fatal().Msg("Error while parsing to json to print: " + err.Error())
 					}
-					fmt.Println(string(jsonData))
+					fmt.Println(string(jsonData) + "\n")
 
 					return tmpOutput
 				}
@@ -241,7 +244,7 @@ func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck boo
 	}
 
 	if subdomainCheck {
-		gologger.Print().Msgf("Testing for whitelist origins (subdomains) [%s]", currentTime())
+		gologger.Print().Msgf("Testing for whitelisted origins (subdomains) [%s]", currentTime())
 
 		if options.SubdomainList == "" {
 			return nil
@@ -264,7 +267,7 @@ func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck boo
 
 			attackRequest, err := http.NewRequest("GET", target, nil)
 			if err != nil {
-				gologger.Warning().Msgf("Failed to create request.\n\t%s", err)
+				gologger.Warning().Msgf("Failed to create request with subdomain==%s.\n\t%s", subdomain, err.Error())
 				continue
 			}
 			for key, value := range headers {
@@ -288,8 +291,11 @@ func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck boo
 						"Access-Control-Allow-Credentials": responseHeaders["Access-Control-Allow-Credentials"][0],
 						"type":                             "potential whitelisted subdomain",
 					}
-					fmt.Println("**********************************")
-					fmt.Println(tmpOutput)
+					jsonData, err := json.MarshalIndent(tmpOutput, "", "  ")
+					if err != nil {
+						gologger.Fatal().Msg("Error while parsing to json to print: " + err.Error())
+					}
+					fmt.Println(string(jsonData) + "\n")
 
 					return tmpOutput
 				}
