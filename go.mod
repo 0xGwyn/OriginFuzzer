@@ -1,4 +1,4 @@
-module github.com/0xgwyn/corsfuzzer
+module github.com/0xgwyn/OriginFuzzer
 
 go 1.20
 

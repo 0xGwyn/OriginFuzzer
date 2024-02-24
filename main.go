@@ -166,20 +166,22 @@ func main() {
 
 func runAttack(target, scheme, domain, attackerDomain string, subdomainCheck bool, headers map[string]string) map[string]interface{} {
 	origins := []string{
-		fmt.Sprintf("%s://NonExistenceSubdomainToTest.%s", scheme, domain),
+		fmt.Sprintf("%s://NonExistentSubdomainToTest.%s", scheme, domain),
 		fmt.Sprintf("%s://%s.%s", scheme, domain, attackerDomain),
-		fmt.Sprintf("%s://%s_%s", scheme, domain, attackerDomain),
 		fmt.Sprintf("%s://%s", scheme, attackerDomain),
 		fmt.Sprintf("%s://%s%s", scheme, domain, attackerDomain),
 		fmt.Sprintf("%s://%s%s", scheme, attackerDomain, domain),
+		fmt.Sprintf("%s://%s-%s", scheme, attackerDomain, domain),
+		fmt.Sprintf("%s://%s-%s", scheme, attackerDomain, domain),
 		"null",
 		"sample.computer",
-		fmt.Sprintf("%s://%s%%09%s", scheme, domain, attackerDomain),
-		fmt.Sprintf("%s://%s%%60.%s", scheme, domain, attackerDomain),
-		fmt.Sprintf("%s://foo@%s:80@%s", scheme, attackerDomain, domain),
-		fmt.Sprintf("%s://foo@%s%%20%s", scheme, attackerDomain, domain),
-		fmt.Sprintf("%s://%s@%s", scheme, domain, attackerDomain),
-		fmt.Sprintf("%s://%s#%s", scheme, domain, attackerDomain),
+		//fmt.Sprintf("%s://%s_%s", scheme, domain, attackerDomain),
+		//fmt.Sprintf("%s://%s%%09%s", scheme, domain, attackerDomain),
+		//fmt.Sprintf("%s://%s%%60.%s", scheme, domain, attackerDomain),
+		//fmt.Sprintf("%s://foo@%s:80@%s", scheme, attackerDomain, domain),
+		//fmt.Sprintf("%s://foo@%s%%20%s", scheme, attackerDomain, domain),
+		//fmt.Sprintf("%s://%s@%s", scheme, domain, attackerDomain),
+		//fmt.Sprintf("%s://%s#%s", scheme, domain, attackerDomain),
 	}
 
 	transport := &http.Transport{
