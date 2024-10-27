@@ -1,11 +1,11 @@
 
 # Installation
 ```bash
-go install github.com/0xGwyn/OriginFuzzer@latest
+go install github.com/0xgwyn/OriginFuzzer@latest
 ```
 or
 ```bash
-git clone https://github.com/0xGwyn/OriginFuzzer.git 
+git clone https://github.com/0xGwyn/OriginFuzzer.git
 cd OriginFuzzer
 go build -o $GOPATH/bin/originfuzzer main.go
 ```
